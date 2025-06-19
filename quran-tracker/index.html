@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Quran Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 1rem;
+      max-width: 600px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    input[type="text"], input[type="date"], button {
+      padding: 0.75rem;
+      font-size: 1rem;
+    }
+    .row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    button {
+      cursor: pointer;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      background: #f9f9f9;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 6px;
+      flex-wrap: wrap;
+    }
+    li span {
+      flex: 1 1 auto;
+      margin-right: 1rem;
+      cursor: pointer;
+    }
+    .delete-btn {
+      background: #ff4d4d;
+      color: white;
+      border: none;
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+    }
+    .delete-btn:hover {
+      background: #e60000;
+    }
+    .icon-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .icon-btn {
+      background: none;
+      border: none;
+      padding: 0.5rem;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .icon-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+    .search-bar {
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 500px) {
+      .row {
+        flex-direction: column;
+      }
+      .icon-buttons {
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Quran Tracker</h1>
+
+<input type="text" id="search" class="search-bar" placeholder="Search surah name...">
+
+<form id="item-form">
+  <input type="text" id="title" placeholder="Surah name" required>
+  <div class="row">
+    <input type="date" id="date" required>
+    <button type="button" onclick="setToday()">Today</button>
+  </div>
+  <button type="submit">Add / Update Item</button>
+</form>
+
+<div class="icon-buttons">
+  <button class="icon-btn" onclick="exportList()" title="Export">📤</button>
+  <input type="file" id="import-file" accept=".json" style="display:none" onchange="importList(event)">
+  <button class="icon-btn" onclick="document.getElementById('import-file').click()" title="Import">📥</button>
+</div>
+
+<ul id="item-list"></ul>
+
+<script>
+  let items = JSON.parse(localStorage.getItem("items")) || [];
+  let selectedTitle = null;
+
+  function saveItems() {
+    localStorage.setItem("items", JSON.stringify(items));
+  }
+
+  function formatDateForDisplay(isoDate) {
+    const [year, month, day] = isoDate.split("-");
+    return `${day}/${month}/${year}`;
+  }
+
+  function renderList(filter = "") {
+    const list = document.getElementById("item-list");
+    list.innerHTML = "";
+
+    items
+      .filter(item => item.title.toLowerCase().includes(filter.toLowerCase()))
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach((item) => {
+        const li = document.createElement("li");
+
+        const span = document.createElement("span");
+        span.textContent = `${item.title} - ${formatDateForDisplay(item.date)}`;
+        span.addEventListener("click", () => {
+          document.getElementById("title").value = item.title;
+          document.getElementById("date").value = item.date;
+          selectedTitle = item.title;
+          document.getElementById("title").scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.className = "delete-btn";
+        delBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          items = items.filter(i => i.title !== item.title);
+          saveItems();
+          renderList(document.getElementById("search").value);
+        });
+
+        li.appendChild(span);
+        li.appendChild(delBtn);
+        list.appendChild(li);
+      });
+  }
+
+  function setToday() {
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("date").value = today;
+  }
+
+  document.getElementById("item-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const title = document.getElementById("title").value.trim();
+    const date = document.getElementById("date").value;
+
+    if (!title || !date) return;
+
+    const existingIndex = items.findIndex(item => item.title === title);
+
+    if (existingIndex >= 0) {
+      // Update existing
+      items[existingIndex].date = date;
+    } else {
+      // Add new
+      items.push({ title, date });
+    }
+
+    saveItems();
+    renderList(document.getElementById("search").value);
+    this.reset();
+    selectedTitle = null;
+  });
+
+  function exportList() {
+    const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "item-list.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importList(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (!Array.isArray(imported)) throw new Error("Invalid format");
+
+        items = imported.filter(item => item.title && item.date);
+        saveItems();
+        renderList(document.getElementById("search").value);
+        alert("List imported successfully!");
+      } catch (err) {
+        alert("Invalid file format. Please select a valid JSON file.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  document.getElementById("search").addEventListener("input", function () {
+    renderList(this.value);
+  });
+
+  renderList();
+</script>
+
+</body>
+</html>
