@@ -1187,6 +1187,32 @@ select.portfolio-filter-mobile {
   color: #000;
 }
 
+@media (max-width: 768px) {
+    .img-spacing-mobile-view {
+        margin-top: 0px !important;
+        margin-bottom: 30px !important;
+    }
+    .img-spacing-mobile-view-tubeking {
+        margin-top: 100px !important;
+        margin-bottom: 30px !important;
+    }
+    .img-spacing-mobile-view-trip4pet {
+        margin-top: 100px !important;
+        margin-bottom: 40px !important;
+    }
+    .mobile-button-stack {
+        flex-direction: column !important;
+        align-items: normal;
+    }
+    .mobile-button-stack .btn {
+        margin-bottom: 10px;
+    }
+    .title-size-mobile-view {
+        margin-left: 20px !important;
+        font-size: 25px !important;
+    }
+}
+
 /*=================================================================*/
 /*                      FACTS                              
 /*=================================================================*/
